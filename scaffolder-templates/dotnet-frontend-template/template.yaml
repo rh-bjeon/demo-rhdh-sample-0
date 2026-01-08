@@ -8,7 +8,7 @@ metadata:
     - recommended
     - dotnet
 spec:
-  owner: platformengineers
+  owner: user1
   type: service
   parameters:
     - title: 컴포넌트 정보
@@ -39,9 +39,9 @@ spec:
           type: object
           properties:
             host:
-              title: 소스코드 리포지토리 호스트
+              title: 애플리케이션 소스코드 저장소의 호스트
               type: string
-              description: Your SCM host
+              description: 애플리케이션 소스코드 저장소(예를 들어 gitlab)의 호스트
               ####### CHANGE_ME #######
               default: GITLAB__DEFAULT__HOST
               enumNames:
@@ -50,7 +50,7 @@ spec:
                 - GITLAB__DEFAULT__HOST
               ####### CHANGE_ME #######
             owner:
-              title: 애플리케이션 소스코드 리포지토리 그룹
+              title: 애플리케이션 소스코드 저장소의 소유자 또는 그룹
               type: string
               description: 소스코드를 관리할 리포지토리 조직/그룹
               default: GITLAB__SOURCE__ORG
@@ -62,14 +62,14 @@ spec:
                 - group1
         
         argocd_repo:
-          title: argocd용 앱 배포 설정 저장소
+          title: argocd 앱 매니페스트 저장소 정보
           type: object
+          ui:widget: hidden
           properties:
             host:
-              title: gitops 리포지토리 호스트
+              title: argocd 앱 매니페스트 저장소의 호스트
               type: string
-              description: gitops argocd application의 manifest repo host
-              ui:widget: hidden
+              description: gitops용(argocd) 앱 매니페스트 저장소(gitlab)의 호스트
               enumNames:
                 - gitlab
               ####### CHANGE_ME #######
@@ -78,10 +78,9 @@ spec:
               default: GITLAB__DEFAULT__HOST
               ####### CHANGE_ME #######
             owner:
-              title: gitops 리포지토리 그룹
+              title: argocd 앱 매니페스트 저장소의 소유자 또는 그룹
               type: string
-              description: gitops argocd application의 manifest repo owner
-              ui:widget: hidden
+              description: gitops용(argocd) 앱 매니페스트 저장소(gitlab)의 소유자 또는 그룹
               default: GITLAB__GITOPS__ORG
               enumNames:
                 - 'GITLAB__GITOPS__ORG'
@@ -96,7 +95,7 @@ spec:
         - image_tag
       properties:
         image_registry:
-          title: 이미지 레지스트리 유형
+          title: 컨테이너 이미지 레지스트리 유형
           type: string
           default: Quay
           enum:
@@ -145,7 +144,7 @@ spec:
                   enum:
                     - image-registry.openshift-image-registry.svc:5000
                   enumNames: 
-                    - 'dev-cluster 클러스터 내부 레지스트리'
+                    - 'OpenShift 클러스터의 내부 레지스트리'
                 image_tag:
                   title: 이미지 태그
                   default: latest
