@@ -170,6 +170,7 @@ spec:
           host: ${{ parameters.code_repo.host }}
           argocd_repo_host: ${{ parameters.argocd_repo.host }}
           argocd_destination: ${{ parameters.argocd_repo.owner }}/${{ parameters.component_id }}
+          argocd_project: ${{ user.entity.metadata.name }}-${{ parameters.component_id }}
           argocd_namespace: ARGOCD__DEFAULT__NAMESPACE
           destination: ${{ parameters.code_repo.owner }}/${{ parameters.component_id }}
           quay_destination: ${{ parameters.image_organization}}/${{ parameters.component_id }}
@@ -244,6 +245,7 @@ spec:
         namespace: ARGOCD__DEFAULT__NAMESPACE
         ####### CHANGE_ME #######
         appName: ${{ user.entity.metadata.name }}-${{ parameters.component_id }}-bootstrap 
+        projectName: ${{ user.entity.metadata.name }}-${{ parameters.component_id }}
         repoUrl: https://${{ parameters.argocd_repo.host }}/${{ parameters.argocd_repo.owner }}/${{ parameters.component_id }}-gitops.git
         path: 'argocd/'
 

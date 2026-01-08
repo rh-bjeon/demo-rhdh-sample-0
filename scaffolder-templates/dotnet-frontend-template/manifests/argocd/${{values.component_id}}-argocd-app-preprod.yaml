@@ -4,12 +4,10 @@ kind: Application
 metadata:
   name: ${{ values.component_id }}-preprod
   namespace: ${{ values.argocd_namespace }}
-  labels:
-    rht-gitops.com/${{ values.argocd_namespace }}: ${{ values.owner }}-${{values.component_id}}
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: ${{ values.argo_project }}
+  project: ${{ values.argocd_project }}
   source:
     repoURL: ${{ values.destination }}
     targetRevision: HEAD
