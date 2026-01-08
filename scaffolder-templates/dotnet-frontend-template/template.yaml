@@ -245,7 +245,7 @@ spec:
         namespace: ARGOCD__DEFAULT__NAMESPACE
         ####### CHANGE_ME #######
         appName: ${{ user.entity.metadata.name }}-${{ parameters.component_id }}-bootstrap 
-        projectName: ${{ user.entity.metadata.name }}-${{ parameters.component_id }}
+        projectName: ${{ user.entity.metadata.name }}
         repoUrl: https://${{ parameters.argocd_repo.host }}/${{ parameters.argocd_repo.owner }}/${{ parameters.component_id }}-gitops.git
         path: 'argocd/'
 
