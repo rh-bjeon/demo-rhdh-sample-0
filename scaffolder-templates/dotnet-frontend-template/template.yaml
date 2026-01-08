@@ -170,7 +170,6 @@ spec:
           host: ${{ parameters.code_repo.host }}
           argocd_repo_host: ${{ parameters.argocd_repo.host }}
           argocd_destination: ${{ parameters.argocd_repo.owner }}/${{ parameters.component_id }}
-          argocd_project: ${{ user.entity.metadata.name }}-${{ parameters.component_id }}
           argocd_namespace: ARGOCD__DEFAULT__NAMESPACE
           destination: ${{ parameters.code_repo.owner }}/${{ parameters.component_id }}
           quay_destination: ${{ parameters.image_organization}}/${{ parameters.component_id }}
@@ -200,8 +199,9 @@ spec:
         values:
           ####### CHANGE_ME #######
           cluster: OCP__APPS__DOMAIN
-          argo_project: ARGOCD__DEFAULT__PROJECT
           argo_namespace: ARGOCD__DEFAULT__NAMESPACE
+          argo_project: ${{ user.entity.metadata.name }}-${{ parameters.component_id }}
+          #argo_project: ARGOCD__DEFAULT__PROJECT
           ####### CHANGE_ME #######
           destination: https://${{ parameters.argocd_repo.host }}/${{ parameters.argocd_repo.owner }}/${{ parameters.component_id }}-gitops.git
           source_repository: https://${{ parameters.code_repo.host }}/${{ parameters.code_repo.owner }}/${{parameters.component_id}}.git
@@ -210,7 +210,6 @@ spec:
           git_owner: ${{ parameters.code_repo.owner }}
           argocd_repo_host: ${{ parameters.argocd_repo.host }}
           argocd_repo_owner: ${{ parameters.argocd_repo.owner }}
-          argocd_namespace: ARGOCD__DEFAULT__NAMESPACE
           namespace: ${{ parameters.component_id }}-dev
           component_id: ${{ parameters.component_id }}
           image_registry: ${{ parameters.image_registry }}
@@ -244,7 +243,7 @@ spec:
         argoInstance: ARGOCD__DEFAULT__INSTANCE
         namespace: ARGOCD__DEFAULT__NAMESPACE
         ####### CHANGE_ME #######
-        appName: ${{ user.entity.metadata.name }}-${{ parameters.component_id }}-bootstrap 
+        appName: ${{ user.entity.metadata.name }}-${{ parameters.component_id }}-bootstrap
         projectName: ${{ user.entity.metadata.name }}
         repoUrl: https://${{ parameters.argocd_repo.host }}/${{ parameters.argocd_repo.owner }}/${{ parameters.component_id }}-gitops.git
         path: 'argocd/'
