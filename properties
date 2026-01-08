@@ -4,6 +4,6 @@ export QUAY__DEFAULT__HOST=quay-9hj98.apps.cluster-9hj98.dynamic.redhatworkshops
 export GITLAB__SOURCE__ORG=development
 export GITLAB__GITOPS__ORG=gitops
 export QUAY__DEFAULT__ORG=quayadmin
-export ARGOCD__DEFAULT__NAMESPACE=rhdh-gitops
+export ARGOCD__DEFAULT__NAMESPACE=janus-argocd
 export ARGOCD__DEFAULT__INSTANCE=main
 export ARGOCD__DEFAULT__PROJECT=default
