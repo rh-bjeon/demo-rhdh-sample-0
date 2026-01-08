@@ -1,0 +1,15 @@
+site_name: ${{values.component_id}}
+site_description: ${{values.description}}
+repo_url: https://${{values.host}}/${{values.destination}}
+edit_uri: edit/master/docs
+
+plugins:
+  - techdocs-core
+
+# Note for content editors, edit only the section below
+nav:
+  - OpenShift에 개발자 온보딩: onboard-openshift.md
+  - 앱 마이그레이션:
+      - 마이그레이션 과정 개요: application-migration/migration-process-overview.md
+      - 마이그레이션 과정의 각 단계: application-migration/migration-process-steps.md
+      - 개발자를 위한 학습 경로: application-migration/learning-path-for-developers.md

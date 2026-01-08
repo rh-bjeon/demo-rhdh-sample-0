@@ -1,1 +1,3 @@
-# demo-rhdh-sample-0
+# Software Templates
+
+Collection of Software Templates / Golden Path for Backstage.

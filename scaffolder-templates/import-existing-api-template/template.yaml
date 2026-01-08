@@ -1,0 +1,169 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: import-api-catalog
+  title: Import Existing API
+  description: Import existing API, autocreate config-info.yaml and conditionally setup techdocs.
+  tags:
+    - import
+    - catalog
+    - register
+    - api
+spec:
+  owner: group:default/platformengineers
+  system: rhdh
+  type: template
+
+  parameters:
+
+    - title: Information about your existing API
+      required:
+        - gitlabHost
+        - gitlabOrganization
+        - repositoryName
+        - apiType
+        - apiPathText
+      properties:
+        gitlabHost:
+          title: Gitlab hostname
+          type: string
+          description: Your gitlab
+          default: {{ gitlab_host }}
+          enum:
+            - {{ gitlab_host }}
+        gitlabOrganization:
+          title: GitLab Organization of Existing API
+          type: string
+          default: parasol
+        repositoryName:
+          title: Repository name of Existing API
+          type: string
+          description: Please ensure this repo exists
+          default: parasol-store-api
+        apiPathText:
+          title: API specification path
+          description: This will need to be the full path where the API specification is stored in the repository. 
+          type: string
+        apiType:
+          title: Type of API
+          type: string
+          default: openapi
+          description: Usual types are openapi, 
+          enum:
+          - openapi
+          - grpc
+          - graphql
+          - tRPC 
+          - Avro
+          - Dataset
+          - Other
+          allowArbitraryValues: true
+
+    - title: New Component details
+      required:
+        - allLocationGitlabOrganization
+        - allLocationRepositoryName
+        - system
+        - componentOwner
+        - lifecycle
+
+      properties:
+        allLocationGitlabOrganization:
+          title: Component GitLab Organization
+          type: string
+          default: parasol
+        allLocationRepositoryName:
+          title: Component Repository name
+          type: string
+          description: Please ensure this repo exists
+          default: all-location-parasol
+        componentName:
+          title: Component Name of the API
+          type: string
+          description: Name of the component. (Defaults to the repo name)
+          default: parasol-store-api
+        system:
+          title: System name
+          description: This is the application name that helps to group components easily
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: System
+        componentOwner:
+          title: Owner of the API
+          description: Select an owner from the list or enter a reference to a Group or a User
+          type: string
+          default: user:default/dev1
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind:
+                - Group
+                - User
+        description:
+          title: A short description of this component
+          description: A short description of this component
+          type: string
+          default: Open API specification for the parasol-store application
+        lifecycle:
+          title: Lifecycle
+          type: string
+          description: 'The lifecycle state of the component. Well-known and common values: experimental, production, deprecated.'
+          default: experimental
+          enum:
+          - experimental
+          - production
+          - deprecated
+          - other
+
+  steps:
+    - id: fetch-all-location-repo
+      name: Fetch all-locations catalog repo
+      action: fetch:template
+      targetPath: ../.
+      input:
+        url: {{ 'https://${{ parameters.gitlabHost }}/${{ parameters.gitlabOrganization }}/${{ parameters.allLocationRepositoryName }}' }}
+        
+
+    # Step1: Create catalog-info file for the component
+    - id: catalogTemplate
+      name: Fetch catalog-info  template
+      action: fetch:template
+      input:
+        url: ./templates
+        targetPath: ./patch
+        values:
+          applicationType: "API"
+          component_id: {{ '${{ parameters.componentName }}' }}
+          componentName: {{ '${{ parameters.componentName }}' }}
+          componentLifecycle: {{ '${{ parameters.componentLifecycle }}' }}
+          description: {{ '${{ parameters.description }}' }}
+          destination: {{ '"${{ parameters.gitlabHost }}/${{ parameters.gitlabOrganization }}/${{ parameters.repositoryName }}"' }}
+          host: {{ '${{ parameters.gitlabHost }}' }}
+          owner: {{ '${{ parameters.componentOwner }}' }}
+          orgName: {{ '${{ parameters.gitlabOrganization }}' }}
+          repoName: {{ '${{ parameters.repositoryName }}' }}
+          system: {{ '${{ parameters.system }}' }}
+          apiType: {{ '${{ parameters.apiType }}' }}
+          apiPathText: {{ '${{ parameters.apiPathText }}' }}
+          allLocationGitlabOrganization: {{ '${{ parameters.allLocationGitlabOrganization }}' }}
+          allLocationRepositoryName: {{ '${{ parameters.allLocationRepositoryName }}' }}
+    
+    # Merge catalog-info and techdocs into EXISTING repo   - only EXISTING REPO
+    - id: publishComponentMergeRequest
+      name: Open PR with for all-catalog
+      action: publish:gitlab:merge-request
+      input: 
+        repoUrl: {{ '"${{ parameters.gitlabHost }}?repo=${{ parameters.allLocationRepositoryName }}&owner=${{ parameters.gitlabOrganization }}"' }}
+        title: Open PR with catalog-info.yaml
+        description: Open PR with catalog-info.yaml
+        branchName: {{ '"${{ parameters.componentName }}-create"' }}
+        sourcePath: ./patch
+        targetPath: {{ '"./${{ parameters.repositoryName }}"' }}
+        commitAction: create
+        removeSourceBranch: true    
+  output:
+    links:
+      - url: {{ '${{ steps.publishComponentMergeRequest.output.mergeRequestUrl }}' }}
+        title: 'Component merge request'

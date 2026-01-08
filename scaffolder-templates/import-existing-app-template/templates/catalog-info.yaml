@@ -1,0 +1,53 @@
+{%- if values.componentName %}
+  {%- set name = values.componentName %}
+{%- else %}
+  {%- set name = values.repoName %}
+{% endif -%}
+
+apiVersion: backstage.io/v1alpha1
+{%- if values.entityKind %}
+kind: ${{ values.entityKind }}
+{%- else %}
+kind: Component
+{%- endif %}
+metadata:
+  name: ${{ name }}
+  {%- if values.title %}
+  title: ${{ values.title }}
+  {%- endif %}
+  {%- if values.description %}
+  description: ${{ values.description }}
+  {%- endif %}
+  annotations:
+    {%- if values.manifests %}  
+    argocd/app-selector: rht-gitops.com/argocd=${{ name }}
+    backstage.io/kubernetes-id: ${{ name }}
+    janus-idp.io/tekton: ${{ name }}
+    backstage.io/kubernetes-label-selector: 'app.kubernetes.io/name=${{ name }}'
+    {%- endif %}
+    backstage.io/source-location: url:https://${{ values.host }}/${{ values.allLocationGitlabOrganization }}/${{ values.repoName }}
+    backstage.io/techdocs-ref: url:https://${{ values.host }}/${{ values.allLocationGitlabOrganization }}/${{ values.allLocationRepositoryName }}/-/tree/main/${{ values.repoName }}
+    gitlab.com/project-slug: ${{ values.orgName }}/${{ values.repoName }}
+
+spec:
+  type: ${{ values.applicationType }}
+  {%- if values.system %}
+  system: ${{ values.system }}
+  {%- endif %}
+  {%- if values.lifecycle %}
+  lifecycle: ${{ values.lifecycle }}
+  {%- else %}
+  lifecycle: production
+  {%- endif %}
+  owner: ${{ values.owner }}
+  {%- if values.dependsOn %}
+  dependsOn:
+    - ${{ values.dependsOn }}
+  {%- endif %}
+  {%- if values.partOf %}
+  partOf:
+    - ${{ values.partOf }}
+  {%- endif %}
+  {%- if values.consumesApis %}
+  consumesApis: [ ${{ values.consumesApis }} ]
+  {%- endif %}

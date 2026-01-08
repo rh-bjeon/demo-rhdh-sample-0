@@ -1,0 +1,252 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: dotnet-8.0-frontend-template
+  title: .NET 8.0 프런트엔드 앱 생성 (Tekton Pipeline & ArgoCD)
+  description: CI/CD 파이프라인이 포함된 .NET 프런트엔드 앱 초기 구성
+  tags:
+    - recommended
+    - dotnet
+spec:
+  owner: platformengineers
+  type: service
+  parameters:
+    - title: 컴포넌트 정보
+      required:
+        - component_id
+      properties:
+        component_id:
+          title: 컴포넌트 이름
+          type: string
+          description: Unique name of the component
+          default: my-dotnet-app
+          ui:field: EntityNamePicker
+          # 엔터티 이름을 입력할 때 간단한 검증
+          minLength: 4
+          maxLength: 23
+        description:
+          title: 설명
+          type: string
+          description: Help others understand what this component is for
+          default: A sample dotnet app
+
+    - title: 애플리케이션 소스코드 저장소 정보
+      required:
+        - repo
+      properties:
+        repo:
+          title: 리포지토리 위치
+          type: object
+          properties:
+            host:
+              title: 소스코드 리포지토리 호스트
+              type: string
+              description: Your SCM host
+              ####### CHANGE_ME #######
+              default: GITLAB__DEFAULT__HOST
+              enumNames:
+                - 'gitlab'
+              enum:
+                - GITLAB__DEFAULT__HOST
+              ####### CHANGE_ME #######
+            owner:
+              title: 소스코드 리포지토리 그룹
+              type: string
+              description: 소스코드를 관리할 리포지토리 조직/그룹
+              default: GITLAB__SOURCE__ORG
+              enumNames:
+                - 'GITLAB__SOURCE__ORG'
+                - 'group1'
+              enum:
+                - GITLAB__SOURCE__ORG
+                - group1
+        gitops_host:
+          title: gitops 리포지토리 호스트
+          type: string
+          description: gitops argocd application의 manifest repo host
+          ui:widget: hidden
+          enumNames:
+            - gitlab
+          ####### CHANGE_ME #######
+          enum:
+            - GITLAB__DEFAULT__HOST
+          default: GITLAB__DEFAULT__HOST
+          ####### CHANGE_ME #######
+        gitops_owner:
+          title: gitops 리포지토리 그룹
+          type: string
+          description: gitops argocd application의 manifest repo owner
+          ui:widget: hidden
+          default: GITLAB__GITOPS__ORG
+          enumNames:
+            - 'GITLAB__GITOPS__ORG'
+          enum:
+            - GITLAB__GITOPS__ORG
+
+    - title: 이미지 레지스트리 정보
+      required:
+        - image_registry
+        - image_host
+        - image_organization
+        - image_tag
+      properties:
+        image_registry:
+          title: 이미지 레지스트리 유형
+          type: string
+          default: Quay
+          enum:
+            - Quay
+            - Openshift
+          enumNames:
+            - 'Quay 레지스트리 (이미지 스캔 지원)'
+            - 'OpenShift 클러스터 내부 레지스트리'
+      dependencies:
+        image_registry:
+          oneOf:
+            - properties:
+                image_registry:
+                  enum:
+                    - Quay
+                image_host:
+                  title: 이미지 레지스트리 호스트
+                  type: string
+                  description: 컨테이너 이미지 저장소
+                  ####### CHANGE_ME #######
+                  default: QUAY__DEFAULT__HOST
+                  enum:
+                    - QUAY__DEFAULT__HOST
+                  enumNames:
+                    - 'Quay 레지스트리 A'
+                  ####### CHANGE_ME #######
+                image_organization:
+                  title: Quay 레지스트리 조직
+                  type: string
+                  description: 이미지를 배포할 Quay Organization의 이름
+                  default: QUAY__DEFAULT__ORG
+                image_tag:
+                  title: 이미지 태그
+                  default: latest
+                  type: string
+                  description: 이미지 빌드 시 태그
+            - properties:
+                image_registry:
+                  enum:
+                    - Openshift
+                image_host:
+                  title: 이미지 레지스트리 호스트
+                  type: string
+                  description: 컨테이너 이미지 저장소
+                  default: image-registry.openshift-image-registry.svc:5000
+                  enum:
+                    - image-registry.openshift-image-registry.svc:5000
+                  enumNames: 
+                    - 'dev-cluster 클러스터 내부 레지스트리'
+                image_tag:
+                  title: 이미지 태그
+                  default: latest
+                  type: string
+                  description: 이미지 빌드 시 태그
+
+  steps:
+    - id: template_source
+      name: Fetch Skeleton + Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        copyWithoutTemplating:
+          - .github/workflows/*
+        values:
+          ####### CHANGE_ME #######
+          cluster: OCP__APPS__DOMAIN
+          ####### CHANGE_ME #######
+          component_id: ${{ parameters.component_id }}
+          description: ${{ parameters.description }}
+          namespace: ${{ parameters.component_id }}-dev
+          owner: ${{ user.entity.metadata.name }}
+          host: ${{ parameters.repo.host }}
+          gitops_repo_host: ${{ parameters.gitops_host }}
+          gitops_destination: ${{ parameters.gitops_owner }}/${{ parameters.component_id }}
+          gitops_namespace: ARGOCD__DEFAULT__NAMESPACE
+          destination: ${{ parameters.repo.owner }}/${{ parameters.component_id }}
+          quay_destination: ${{ parameters.image_organization}}/${{ parameters.component_id }}
+
+    - id: publish_source
+      name: Publish source repo
+      action: publish:gitlab
+      input:
+        repoUrl: "${{ parameters.repo.host }}?owner=${{ parameters.repo.owner }}&repo=${{parameters.component_id}}"
+        settings:
+          visibility: public
+        defaultBranch: main
+
+    - id: register_catalog
+      name: Registering the Catalog Info Component
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish_source.output.repoContentsUrl }}
+        catalogInfoPath: "/catalog-info.yaml"
+
+    - id: template_gitops_deployment
+      name: Generating Deployment Resources
+      action: fetch:template
+      input:
+        url: ./manifests
+        copyWithoutTemplating: []
+        values:
+          ####### CHANGE_ME #######
+          cluster: OCP__APPS__DOMAIN
+          argo_project: ARGOCD__DEFAULT__PROJECT
+          argo_namespace: ARGOCD__DEFAULT__NAMESPACE
+          ####### CHANGE_ME #######
+          destination: https://${{ parameters.gitops_host }}/${{ parameters.gitops_owner }}/${{ parameters.component_id }}-gitops.git
+          source_repository: https://${{ parameters.repo.host }}/${{ parameters.repo.owner }}/${{parameters.component_id}}.git
+          repository_name: ${{parameters.component_id}}
+          repository_host: ${{ parameters.repo.host }}
+          git_owner: ${{ parameters.repo.owner }}
+          gitops_repo_host: ${{ parameters.gitops_host }}
+          gitops_owner: ${{ parameters.gitops_owner }}
+          gitops_namespace: ARGOCD__DEFAULT__NAMESPACE
+          namespace: ${{ parameters.component_id }}-dev
+          component_id: ${{ parameters.component_id }}
+          image_registry: ${{ parameters.image_registry }}
+          image_host: ${{ parameters.image_host }}
+          image_organization: ${{ parameters.image_organization }}
+          image_name: ${{ parameters.component_id }}
+          image_tag: ${{ parameters.image_tag }}
+          description: ${{ parameters.description }}
+          port: 8080
+          deployment_name: dotnet-${{parameters.component_id}}
+          owner: ${{ user.entity.metadata.name }}
+        targetPath: ./tenant-gitops
+
+    - id: publish_gitops
+      name: Publishing to Resource Repository
+      action: publish:gitlab
+      input:
+        title: gitops resources for ${{ parameters.component_id }}
+        repoUrl: "${{ parameters.gitops_host }}?owner=${{ parameters.gitops_owner }}&repo=${{ parameters.component_id }}-gitops"
+        description: gitops resources for ${{ parameters.component_id }}
+        sourcePath: ./tenant-gitops
+        settings:
+          visibility: public
+        defaultBranch: main
+
+    - id: create_argocd_resources
+      name: Create ArgoCD Resources
+      action: argocd:create-resources
+      input:
+        ####### CHANGE_ME #######
+        argoInstance: ARGOCD__DEFAULT__INSTANCE
+        namespace: ARGOCD__DEFAULT__NAMESPACE
+        ####### CHANGE_ME #######
+        appName: ${{ user.entity.metadata.name }}-${{ parameters.component_id }}-bootstrap 
+        repoUrl: https://${{ parameters.gitops_host }}/${{ parameters.gitops_owner }}/${{ parameters.component_id }}-gitops.git
+        path: 'argocd/'
+
+  output:
+    links:
+      - title: 소스코드 리포지토리 확인
+        url: ${{ steps.publish_source.output.remoteUrl }}
+      - title: 컴포넌트 정보 확인
+        icon: catalog
+        entityRef: ${{ steps.register_catalog.output.entityRef }}

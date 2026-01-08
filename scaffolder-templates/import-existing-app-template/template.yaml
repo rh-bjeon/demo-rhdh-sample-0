@@ -1,0 +1,174 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: import-existing-app-template
+  title: Import Existing Application
+  description: Import existing application, autocreate config-info.yaml and conditionally setup techdocs.
+  tags:
+    - import
+    - catalog
+    - register
+spec:
+  owner: group:default/platformengineers
+  system: rhdh
+  type: template
+
+  parameters:
+    - title: Information about your existing application
+      required:
+        - gitlabHost
+        - gitlabOrganization
+        - repositoryName
+      properties:
+        gitlabHost:
+          title: Gitlab hostname
+          type: string
+          description: Your gitlab
+          default: {{ gitlab_host }}
+          enum:
+            - {{ gitlab_host }}
+        gitlabOrganization:
+          title: GitLab Organization
+          type: string
+          default: parasol
+        repositoryName:
+          title: Repository name
+          type: string
+          description: Please ensure this repo exists
+          default: parasol-store
+
+    - title: New Component details
+      required:
+        - allLocationGitlabOrganization
+        - allLocationRepositoryName
+        - system
+        - componentOwner
+      properties:
+        allLocationGitlabOrganization:
+          title: Component GitLab Organization
+          type: string
+          default: parasol
+        allLocationRepositoryName:
+          title: Component Repository name
+          type: string
+          description: Please ensure this repo exists
+          default: all-location-parasol
+        componentName:
+          title: Component Name of the App
+          type: string
+          description: Name of the component. (Defaults to the repo name)
+          default: parasol-store
+        system:
+          title: System name
+          description: This is the application name that helps to group components easily
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: System
+          default: system:default/parasol-system
+        componentOwner:
+          title: Owner of the Application
+          description: Select an owner from the list or enter a reference to a Group or a User
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind:
+                - Group
+                - User
+          default: user:default/dev1
+        description:
+          title: A short description of this component
+          description: A short description of this component
+          type: string
+          default: Core services for the Parasol application
+
+    - title: Additional Component details
+      required:
+        - lifecycle
+      properties:
+        manifests:
+          title: Does this repo contain manifests?
+          type: boolean
+          default: true
+          description: Choose if the component needs CI/CD, Pipelines etc to be enabled on RHDH
+        componentType:
+          title: Type
+          type: string
+          description: 'The type of component. Well-known and common values: service, website, library.'
+          default: service
+        consumesApis:
+          title: Identify the APIs consumed by this component
+          description: 'Pick one or more APIs from this multiple select option'
+          type: array
+          ui:field: MultiEntityPicker
+          ui:options:
+            catalogFilter:
+              kind:
+              - API
+        addTechDocs:
+          title: Check to add TechDocs
+          type: boolean
+          default: true
+        lifecycle:
+          title: Lifecycle
+          type: string
+          description: 'The lifecycle state of the component. Well-known and common values: experimental, production, deprecated.'
+          default: experimental
+          enum:
+            - experimental
+            - production
+            - deprecated
+
+  steps:
+    - id: fetch-all-location-repo
+      name: Fetch all-locations catalog repo
+      action: fetch:template
+      targetPath: ../.
+      input:
+        url: https://{{ '${{ parameters.gitlabHost }}' }}/{{ '${{ parameters.gitlabOrganization }}' }}/{{ '${{ parameters.allLocationRepositoryName }}' }}
+
+    # Step2: Create catalog-info file for the component
+    - id: catalogTemplate
+      name: Fetch catalog-info  template
+      action: fetch:template
+      input:
+        url: ./templates
+        targetPath: ./patch
+        values:
+          applicationType: {{ '${{ parameters.componentType }}' }}
+          component_id: {{ '${{ parameters.componentName }}' }}
+          componentName: {{ '${{ parameters.componentName }}' }}
+          lifecycle: {{ '${{ parameters.componentLifecycle }}' }}
+          description: {{ '${{ parameters.description }}' }}
+          destination: "{{ '${{ parameters.gitlabHost }}' }}/{{ '${{ parameters.gitlabOrganization }}' }}/{{ '${{ parameters.repositoryName }}' }}"
+          host: {{ '${{ parameters.gitlabHost }}' }}
+          owner: {{ '${{ parameters.componentOwner }}' }}
+          orgName: {{ '${{ parameters.gitlabOrganization }}' }}
+          repoName: {{ '${{ parameters.repositoryName }}' }}
+          system: {{ '${{ parameters.system }}' }}
+          manifests: {{ '${{ parameters.manifests }}' }}
+          consumesApis: {{ '${{ parameters.consumesApis }}' }}
+          allLocationGitlabOrganization: {{ '${{ parameters.allLocationGitlabOrganization }}' }}
+          allLocationRepositoryName: {{ '${{ parameters.allLocationRepositoryName }}' }}
+
+    
+    # Merge catalog-info and techdocs into EXISTING repo   - only EXISTING REPO
+    - id: publishComponentMergeRequest
+      name: Open PR with for all-catalog
+      action: publish:gitlab:merge-request
+      input: 
+        repoUrl: "{{ '${{ parameters.gitlabHost }}' }}?repo={{ '${{ parameters.allLocationRepositoryName }}' }}&owner={{ '${{ parameters.gitlabOrganization }}' }}"
+        title: Open PR with catalog-info.yaml
+        description: Open PR with catalog-info.yaml
+        branchName: "{{ '${{ parameters.componentName }}' }}-create"
+        sourcePath: ./patch
+        targetPath: "{{ './${{ parameters.repositoryName }}' }}"
+        commitAction: create
+        removeSourceBranch: true   
+
+  output:
+    links:
+      - url: {{ '${{ steps.publishComponentMergeRequest.output.mergeRequestUrl }}' }}
+        title: 'Component merge request'

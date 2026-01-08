@@ -1,0 +1,76 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: {{ .Values.app.name }}-build
+  labels:
+    type: pipeline
+    backstage.io/kubernetes-id: {{ .Values.app.name }}
+spec:
+  params:
+    - name: dotnet-version
+      description: dotnet version to build with
+      type: string
+      default: '8.0'
+    - name: context-dir
+      description: context directory path to build app
+      type: string
+      default: app
+    - name: source-repo
+      description: source repo that contains the application code
+      type: string
+      default: {{ .Values.git.repo }}
+    - name: source-branch
+      description: source branch to build from
+      default: {{ .Values.git.branch }}
+      type: string
+    - name: output-image
+      description: reference of the image that will get created
+      default: {{ include "image.dev-url" . }}
+      type: string
+    - description: Component id
+      name: component-id
+      type: string
+  tasks:
+    - name: git-clone
+      params:
+        - name: url
+          value: $(params.source-repo)
+        - name: revision
+          value: $(params.source-branch)
+      taskRef:
+        kind: ClusterTask
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: source-folder
+    - name: build-and-push
+      params:
+        - name: IMAGE
+          value: $(params.output-image)
+        - name: VERSION
+          value: $(params.dotnet-version)
+        - name: PATH_CONTEXT
+          value: $(params.context-dir)
+      runAfter:
+        - git-clone
+      taskRef:
+        kind: ClusterTask
+        name: s2i-dotnet
+      workspaces:
+        - name: source
+          workspace: source-folder
+        - name: dockerconfig
+          workspace: docker-config
+    - name: resync
+      params:
+        - name: COMPONENT_ID
+          value: $(params.component-id)
+      runAfter:
+        - build-and-push
+      taskRef:
+        kind: Task
+        name: resync
+  workspaces:
+    - name: source-folder
+    - name: docker-config
