@@ -3,9 +3,9 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: ${{ values.component_id }}-preprod
-  namespace: ${{ values.argo_namespace }}
+  namespace: ${{ values.argocd_namespace }}
   labels:
-    rht-gitops.com/${{ values.gitops_namespace }}: ${{ values.owner }}-${{values.component_id}}
+    rht-gitops.com/${{ values.argocd_namespace }}: ${{ values.owner }}-${{values.component_id}}
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:

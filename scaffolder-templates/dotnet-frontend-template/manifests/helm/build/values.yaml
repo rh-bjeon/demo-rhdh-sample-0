@@ -13,8 +13,8 @@ git:
   webhookSecret: ''
 
 gitops:
-  host: ${{ values.gitops_repo_host }}
-  org:  ${{ values.gitops_owner }}
+  host: ${{ values.argocd_repo_host }}
+  org:  ${{ values.argocd_repo_owner }}
 
 image:
   registry: ${{values.image_registry}}
